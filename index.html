@@ -1319,71 +1319,89 @@ function handleUserInput(inputText) {
     /* =========================
        12) Réponses utilisateur
        ========================= */
-    function onUserAnswer(reply) {
-      quickRepliesEl.style.display = "none";
-  
-      if (reply.value === "__restart__") {
-        restartFlow();
-        return;
-      }
-  
-      // bouton normal
-      if (reply.value && !reply.isText) {
-        addMessage({ from: "user", text: reply.label });
-  
-        const current = FLOW[state.nodeId];
-        const nextId = typeof current.next === "function" ? current.next(reply.value) : current.next;
-        goTo(nextId || "start");
-        return;
-      }
-  
-      // texte libre
-      if (reply.isText) {
-        addMessage({ from: "user", text: reply.label });
-  
-        const result = handleUserInput(reply.label);
-        if (!result) return;
-  
-        if (result.type === "greeting") {
-          const t = getRandomReply("salut");
-          botSay(t || "Salut !", { speed: 45, onComplete: () => goTo("start") });
-          return;
-        }
-  
-        if (result.type === "reply") {
-          const t = getRandomReply(result.keyword);
-          botSay(t || "OK !", { speed: 45 });
-          return;
-        }
-  
-        if (result.type === "flow") {
-          const t = getRandomReply(result.keyword) || "";
-          let nextNode = "start";
-  
-          if (result.keyword === "electricite") nextNode = "elec_choice";
-          if (result.keyword === "metallerie") nextNode = "metal_choice";
-          if (result.keyword === "commerce") nextNode = "commerce_choice";
-          if (result.keyword === "gestion") nextNode = "result_bac_agora";
-          if (result.keyword === "accueil") nextNode = "result_bac_accueil";
-          if (result.keyword === "alternance") nextNode = "alternance_choice";
-  
-          if (result.keyword === "cap_elec") nextNode = "result_cap_elec";
-          if (result.keyword === "cap_metal") nextNode = "result_cap_metallier";
-          if (result.keyword === "cap_commerce") nextNode = "result_cap_epc";
-  
-          if (result.keyword === "bac_elec") nextNode = "result_bac_melec";
-          if (result.keyword === "bac_metal") nextNode = "result_bac_metallerie";
-          if (result.keyword === "bac_commerce") nextNode = "result_bac_commerce";
-  
-          botSay(t || "OK 👍", { speed: 45, onComplete: () => goTo(nextNode) });
-          return;
-        }
-  
-        // unknown
-        botSay(result.text, { speed: 45 });
-      }
+       function onUserAnswer(reply) {
+  quickRepliesEl.style.display = "none";
+
+  // ✅ Restart
+  if (reply.value === "__restart__") {
+    restartFlow();
+    return;
+  }
+
+  // ✅ Bouton normal (quick reply)
+  if (reply.value && !reply.isText) {
+    addMessage({ from: "user", text: reply.label });
+
+    const current = FLOW[state.nodeId];
+    const nextId = typeof current.next === "function"
+      ? current.next(reply.value)
+      : current.next;
+
+    goTo(nextId || "start");
+    return;
+  }
+
+  // ✅ Texte libre
+  if (reply.isText) {
+    addMessage({ from: "user", text: reply.label });
+
+    const result = handleUserInput(reply.label);
+    if (!result) return;
+
+    // Greeting
+    if (result.type === "greeting") {
+      const t = getRandomReply("salut");
+      botSay(t || "Salut !", { speed: 45, onComplete: () => goTo("start") });
+      return;
     }
-  
+
+    // Simple reply
+    if (result.type === "reply") {
+      const t = getRandomReply(result.keyword);
+      botSay(t || "OK !", { speed: 45 });
+      return;
+    }
+
+    // Flow navigation
+    if (result.type === "flow") {
+      let nextNode = "start";
+
+      // Menus
+      if (result.keyword === "electricite") nextNode = "elec_choice";
+      if (result.keyword === "metallerie") nextNode = "metal_choice";
+      if (result.keyword === "commerce") nextNode = "commerce_choice";
+      if (result.keyword === "alternance") nextNode = "alternance_choice";
+
+      // Résultats directs
+      if (result.keyword === "gestion") nextNode = "result_bac_agora";
+      if (result.keyword === "accueil") nextNode = "result_bac_accueil";
+
+      if (result.keyword === "cap_elec") nextNode = "result_cap_elec";
+      if (result.keyword === "cap_metal") nextNode = "result_cap_metallier";
+      if (result.keyword === "cap_commerce") nextNode = "result_cap_epc";
+
+      if (result.keyword === "bac_elec") nextNode = "result_bac_melec";
+      if (result.keyword === "bac_metal") nextNode = "result_bac_metallerie";
+      if (result.keyword === "bac_commerce") nextNode = "result_bac_commerce";
+
+      // ✅ Si on va vers un menu, on va direct (sinon doublon)
+      const isMenu = ["elec_choice", "metal_choice", "commerce_choice", "alternance_choice"].includes(nextNode);
+
+      if (isMenu) {
+        goTo(nextNode);
+        return;
+      }
+
+      // ✅ Sinon, résultat direct : on garde la phrase + carte
+      const t = getRandomReply(result.keyword) || "OK 👍";
+      botSay(t, { speed: 45, onComplete: () => goTo(nextNode) });
+      return;
+    }
+
+    // Unknown
+    botSay(result.text, { speed: 45 });
+  }
+}
     /* =========================
        13) Alternance info
        ========================= */
